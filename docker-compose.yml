@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    ports:
+      - "${DB_DEV_PORT}:5432"
+    env_file:
+      - .env
+    volumes:
+      - db_volume:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_DB: ${DB_NAME}
+
+  db-test:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${DB_TEST_PORT}:5432"
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_DB: ${DB_NAME}
+
+  backend:
+      build:
+        context: .
+      ports:
+        - "8000:8000"
+      command: uvicorn src.main:app --reload --host 0.0.0.0
+      env_file:
+        - .env
+      volumes:
+        - ./src:/home/app/src
+      depends_on:
+        - db
+
+
+
+volumes:
+  db_volume:
