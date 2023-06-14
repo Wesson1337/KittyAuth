@@ -1,0 +1,19 @@
+import os
+
+API_PREFIX_V1 = "/api/v1"
+
+DEBUG = bool(int(os.getenv("DEBUG")))
+
+# Database settings
+DB_DIALECT = "postgresql"
+DB_DRIVER = "asyncpg"
+DB_USER = os.getenv('POSTGRES_USER')
+DB_PASSWORD = os.getenv('POSTGRES_PASSWORD')
+DB_NAME = os.getenv("POSTGRES_DB")
+DB_HOST = os.getenv('POSTGRES_HOST')
+DB_PORT = os.getenv('POSTGRES_DEV_PORT')
+DB_TEST_HOST = os.getenv("POSTGRES_TEST_HOST")
+DB_TEST_PORT = os.getenv("POSTGRES_TEST_PORT")
+
+DATABASE_URL = f"{DB_DIALECT}+{DB_DRIVER}://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+TEST_DATABASE_URL = f"{DB_DIALECT}+{DB_DRIVER}://{DB_USER}:{DB_PASSWORD}@{DB_TEST_HOST}:{DB_TEST_PORT}/{DB_NAME}"
