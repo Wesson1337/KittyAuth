@@ -32,10 +32,8 @@ class UserSchemaRegistration(BaseModel):
 
 
 class UserSchemaPatch(BaseModel):
-    email: Optional[EmailStr]
     password: Optional[constr(min_length=6, max_length=24)]
     is_active: Optional[bool]
-    is_superuser: Optional[bool]
 
 
 class UserSchemaOut(BaseModel):

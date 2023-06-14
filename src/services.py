@@ -5,7 +5,7 @@ from pydantic import EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import User
-from src.schemas import UserSchemaRegistration
+from src.schemas import UserSchemaRegistration, UserSchemaPatch
 from . import utils
 from .utils import get_random_kitty_picture_id
 
@@ -52,4 +52,18 @@ class UserService:
         await self.session.commit()
 
         return new_user
+
+    async def patch_user(self, stored_user: User, user_data: UserSchemaPatch) -> User | None:
+        """Partially changes user data"""
+        user_data: dict = user_data.dict(exclude_unset=True)
+        if not user_data:
+            raise ValueError("No data to update entity")
+
+        updated_user = await utils.update_sql_entity(stored_user, user_data)
+        await self.session.commit()
+
+        return updated_user
+
+
+
 
