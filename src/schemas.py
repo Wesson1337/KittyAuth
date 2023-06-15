@@ -35,6 +35,16 @@ class UserSchemaPatch(BaseModel):
     password: Optional[constr(min_length=6, max_length=24)]
     is_active: Optional[bool]
 
+    def replace_password_to_hash(self) -> dict:
+        """Transforms into a dictionary with hashed_password attribute instead of plain password"""
+        user_data: dict = self.dict(exclude_unset=True)
+        if not user_data:
+            raise ValueError("No data for update")
+        hashed_password = utils.get_password_hash(self.password)
+        del user_data["password"]
+        user_data.update({"hashed_password": hashed_password})
+        return user_data
+
 
 class UserSchemaOut(BaseModel):
     id: int

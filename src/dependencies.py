@@ -22,7 +22,7 @@ async def get_current_user(
         session: AsyncSession = Depends(get_async_session),
         token=Depends(oauth2_scheme)  # Using this dependency for swagger ui
 ) -> User:
-    """Returns user from JWT token in request header"""
+    """Dependency that returns user from JWT token in request header, make routes protected in swagger ui"""
     try:
         authorize.jwt_required()
         email = authorize.get_jwt_subject()

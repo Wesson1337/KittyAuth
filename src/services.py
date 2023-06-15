@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 import sqlalchemy as sa
@@ -11,7 +12,7 @@ from .utils import get_random_kitty_picture_id
 
 
 class UserService:
-    """Class to getting or changing user data in database"""
+    """Class for getting or changing user data in database"""
 
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -55,14 +56,16 @@ class UserService:
 
     async def patch_user(self, stored_user: User, user_data: UserSchemaPatch) -> User | None:
         """Partially changes user data"""
-        user_data: dict = user_data.dict(exclude_unset=True)
-        if not user_data:
-            raise ValueError("No data to update entity")
-
+        user_data: dict = user_data.replace_password_to_hash()
         updated_user = await utils.update_sql_entity(stored_user, user_data)
         await self.session.commit()
 
         return updated_user
+
+    async def delete_user(self, user: User):
+        """Deletes user"""
+        await self.session.delete(user)
+        await self.session.commit()
 
 
 

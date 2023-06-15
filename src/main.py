@@ -1,13 +1,18 @@
+from typing import Literal
 
 from fastapi import FastAPI, Depends
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi_jwt_auth import AuthJWT
+from fastapi_jwt_auth.exceptions import AuthJWTException
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from . import config, database
 from .dependencies import get_async_session, get_current_active_user
-from .exceptions import IncorrectEmailOrPasswordError, UserNotFoundError, NotSuperUserError, EmailAlreadyExistsError
+from .exceptions import IncorrectEmailOrPasswordError, UserNotFoundError, NotSuperUserError, EmailAlreadyExistsError, \
+    CredentialsError
 from .models import User
 from .schemas import UserSchemaOut, UserSchemaRegistration, UserSchemaLogin, UserSchemaPatch
 from .services import UserService
@@ -26,7 +31,15 @@ def get_config():
     return config.AuthJWTSettings()
 
 
-@app.post('/login')
+@app.exception_handler(AuthJWTException)
+def authjwt_exception_handler(request: Request, exc: AuthJWTException):
+    return JSONResponse(
+        status_code=CredentialsError().status_code,
+        content={"detail": CredentialsError().detail}
+    )
+
+
+@app.post('/login/')
 async def login(
         user: OAuth2PasswordRequestForm = Depends(),
         authorize: AuthJWT = Depends(),
@@ -40,13 +53,13 @@ async def login(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@app.get('/users/me', response_model=UserSchemaOut)
+@app.get('/users/me/', response_model=UserSchemaOut)
 async def get_current_user(current_user: User = Depends(get_current_active_user)) -> User:
     """Route to get current user by JWT token in header"""
     return current_user
 
 
-@app.get('/users/{user_id}', response_model=UserSchemaOut)
+@app.get('/users/{user_id}/', response_model=UserSchemaOut)
 async def get_certain_user(
         user_id: int,
         current_user: User = Depends(get_current_active_user),
@@ -65,7 +78,7 @@ async def get_certain_user(
     return user
 
 
-@app.post('/users', status_code=status.HTTP_201_CREATED, response_model=UserSchemaOut)
+@app.post('/users/', status_code=status.HTTP_201_CREATED, response_model=UserSchemaOut)
 async def create_new_user(
         user_data: UserSchemaRegistration,
         session: AsyncSession = Depends(get_async_session),
@@ -79,7 +92,7 @@ async def create_new_user(
     return new_user
 
 
-@app.patch('/users/{user_id}', response_model=UserSchemaOut)
+@app.patch('/users/{user_id}/', response_model=UserSchemaOut)
 async def patch_user(
         user_id: int,
         user_data: UserSchemaPatch,
@@ -100,3 +113,24 @@ async def patch_user(
 
     updated_user = await UserService(session).patch_user(stored_user=stored_user, user_data=user_data)
     return updated_user
+
+
+@app.delete('/users/{user_id}/')
+async def delete_user(
+        user_id: int,
+        current_user: User = Depends(get_current_user),
+        session: AsyncSession = Depends(get_async_session)
+) -> dict[Literal["message"], Literal["success"]]:
+    if user_id == current_user.id:
+        await UserService(session).delete_user(id=user_id)
+        return {"message": "success"}
+
+    if not current_user.is_superuser:
+        raise NotSuperUserError()
+
+    user = await UserService(session).get_user(id=user_id)
+    if user is None:
+        raise UserNotFoundError(user_id)
+
+    await UserService(session).delete_user(id=user_id)
+    return {"message": "success"}

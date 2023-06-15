@@ -1,13 +1,14 @@
 import asyncio
 from typing import Generator, Callable, Literal
 
-import aiohttp
 import pytest_asyncio
 from fastapi import FastAPI
+from fastapi_jwt_auth import AuthJWT
+from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from src.config import TEST_DATABASE_URL
+from src.config import TEST_DATABASE_URL, pwd_context
 from src.database import Base
 from src.dependencies import get_async_session
 from src.main import app
@@ -16,8 +17,7 @@ from src.models import User
 PAYLOAD_DATA = {
     "user_1": {
         "email": "testmail@example.com",
-        # plain password = test_password
-        "hashed_password": "$2b$12$Ql7XTNhMhDbIEHlYnBxQeOi1MMPS.yxx3cWt4j1FILtJ.VkMubnJy",
+        "hashed_password": pwd_context.hash("test_password"),
         "profile_picture_id": "Z0aeZsdukWvVItTO",
         "profile_picture_url": "https://cataas.com/cat/Z0aeZsdukWvVItTO?width=200&height=200",
         "is_superuser": True,
@@ -26,8 +26,7 @@ PAYLOAD_DATA = {
     },
     "user_2": {
         "email": "test@example.com",
-        # plain password = test_password
-        "hashed_password": "$2b$12$kYRIvRY4vySCrR10hhZaVuRQCjU.78x2zaGpo2TsuSOjJVoVEBIyG",
+        "hashed_password": pwd_context.hash("test_password"),
         "profile_picture_id": "Z0aeZsdukWvVItTO",
         "profile_picture_url": "https://cataas.com/cat/Z0aeZsdukWvVItTO?width=200&height=200",
         "is_superuser": False,
@@ -35,8 +34,7 @@ PAYLOAD_DATA = {
     },
     "user_3": {
         "email": "inactiveuser@example.com",
-        # plain password = test_password
-        "hashed_password": "$2b$12$kYRIvRY4vySCrR10hhZaVuRQCjU.78x2zaGpo2TsuSOjJVoVEBIyG",
+        "hashed_password": pwd_context.hash("test_password"),
         "profile_picture_id": "19Ykh6wwZdgIEL2D",
         "profile_picture_url": "https://cataas.com/cat/19Ykh6wwZdgIEL2D?width=200&height=200",
         "is_superuser": False,
@@ -92,17 +90,17 @@ def test_app(override_get_async_session: Callable) -> FastAPI:
 
 
 @pytest_asyncio.fixture(scope="function")
-async def client(seed_db, test_app: FastAPI, seed_test_redis_from_test_db) -> :
-    async with aiohttp.ClientSession(base_url="http://localhost:8000") as ac:
+async def client(seed_db, test_app: FastAPI) -> AsyncClient:
+    async with AsyncClient(app=app, base_url="http://localhost:8000") as ac:
         yield ac
 
 
 @pytest_asyncio.fixture(scope="function")
-async def superuser_encoded_jwt_token(seed_db, seed_test_redis_from_test_db) -> str:
+async def superuser_encoded_jwt_token(seed_db) -> str:
     user_email = "test@example.com"
-    data_to_encode = {"sub": user_id, "exp": datetime.utcnow() + timedelta(minutes=300)}
-    encoded_jwt_token = jwt.encode(data_to_encode, JWT_SECRET_KEY, JWT_ALGORITHM)
-    return encoded_jwt_token
+    encoded_token = AuthJWT().create_access_token(subject=user_email, algorithm="HS256",
+                                                  expires_time=60 * 60 * 3)
+    return encoded_token
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -112,11 +110,11 @@ async def auth_headers_superuser(superuser_encoded_jwt_token: str) -> tuple[Lite
 
 
 @pytest_asyncio.fixture(scope="function")
-async def ordinary_user_encoded_jwt_token(seed_db, seed_test_redis_from_test_db) -> str:
+async def ordinary_user_encoded_jwt_token(seed_db) -> str:
     user_email = "test@example.com"
-    data_to_encode = {"sub": user_email, "exp": datetime.utcnow() + timedelta(minutes=300)}
-    encoded_jwt_token = jwt.encode(data_to_encode, JWT_SECRET_KEY, JWT_ALGORITHM)
-    return encoded_jwt_token
+    encoded_token = AuthJWT().create_access_token(subject=user_email, algorithm="HS256",
+                                                  expires_time=60 * 60 * 3)
+    return encoded_token
 
 
 @pytest_asyncio.fixture(scope="function")

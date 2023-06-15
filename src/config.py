@@ -1,10 +1,8 @@
 import os
 
 from passlib.context import CryptContext
-from pydantic import BaseSettings, BaseModel
+from pydantic import BaseModel
 
-# API prefix for whole app.
-API_PREFIX_V1 = "/api/v1"
 
 # Debug setting. If False, hides all logging info from SQLAlchemy.
 DEBUG = bool(int(os.getenv("DEBUG") or 1))
