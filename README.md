@@ -39,6 +39,6 @@ You should write down into it next variables:
 - DB_HOST="db"
 - DB_DEV_PORT="5432"
 - DB_TEST_PORT="8001"
-- DB_TEST_HOST="db"
+- DB_TEST_HOST="test-db"
 - DEBUG=1
 - AUTHJWT_SECRET_KEY="secret"
